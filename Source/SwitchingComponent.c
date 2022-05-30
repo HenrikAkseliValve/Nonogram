@@ -42,19 +42,40 @@ struct IntLink{
 	struct IntLink *next;
 	uint32_t unknownpixelgraphsize;
 };
+
+static int32_t findLeftmostCover(int32_t pixel,BlocksRanges *ranges,int32_t length){
+	int32_t blockindex;
+	for(blockindex=0; blockindex<length; blockindex++){
+		if(ranges->blocksrangelefts[blockindex]<=pixel && pixel<=ranges->blocksrangerights[blockindex]){
+			break;
+		}
+	}
+	return blockindex;
+}
+static int32_t findRightmostCover(int32_t pixel,BlocksRanges *ranges,int32_t length){
+	// If block does not exists variable blockindex here equals length.
+	int32_t blockindex=findLeftmostCover(pixel,ranges,length);
+	while(blockindex<length-1 && ranges->blocksrangelefts[blockindex+1]<=pixel && pixel<=ranges->blocksrangerights[blockindex+1]){
+		blockindex++;
+	}
+	return blockindex;
+}
 /*
 * For unknown pixel graph which we use to store our switching components
 * edge is NOT created if there is one block covering unknown pixel with
 * no overlap "left" of the block and last unknown pixel was not covered
-* by same block.
+* by same block and pixels are not next to each other.
 *
 * Helper function because firstCallback and secondCallback uses the same
 * function.
 *
 * Returns 1 if edge is allowed and 0 if not.
 */
-static uint8_t allowUnknownPixelGraphEdge(BlocksRanges *ranges,int32_t pixel,int32_t numberofblocks,int32_t lastunknownpos){
-	// So first calculate covering blocks of a pixel.
+static uint8_t allowUnknownPixelGraphEdge(BlocksRanges *ranges,int32_t pixel,int32_t numberofblocks,int32_t lastunknownpos,EdgeValue *edge){
+	// If unknown pixels are next to each other allow edge creation.
+	if(edge->state==NONO_EDGE_STATE_NEXTTO) return 1;
+	
+	// Find blocks of covering the new unknown pixel.
 	int32_t blockindex;
 	int32_t k;
 	for(k=0;k<numberofblocks;k++){
@@ -70,8 +91,19 @@ static uint8_t allowUnknownPixelGraphEdge(BlocksRanges *ranges,int32_t pixel,int
 				if(ranges->blocksrangelefts[k]<=pixel && pixel<=ranges->blocksrangerights[k]) return 1;
 			}
 
-			// If left overlap exist or last unknown pixel was covered by same block then allow.
-			return (blockindex>0 && ranges->blocksrangerights[blockindex-1]>=ranges->blocksrangelefts[blockindex]) || lastunknownpos>=ranges->blocksrangelefts[blockindex];
+			if(edge->state==NONO_EDGE_STATE_MIX){
+				// If left overlap exist and last unknown pixel was covered by same block sequence then allow.
+				int leftblock=findRightmostCover(lastunknownpos,ranges,numberofblocks);
+				int32_t blkseq;
+				for(int32_t blkseq=leftblock;blkseq<blockindex;blkseq++){
+					if(ranges->blocksrangerights[blkseq]<ranges->blocksrangelefts[blkseq+1]) return 0;
+				}
+				return 1;
+			}
+			else{
+				// If left overlap exist and last unknown pixel was covered by same block then allow.
+				return (blockindex>0 && ranges->blocksrangerights[blockindex-1]>=ranges->blocksrangelefts[blockindex]) || lastunknownpos>=ranges->blocksrangelefts[blockindex];
+			}
 		}
 	}
 	// Umm... no blocks covers the unknown pixel... so it cannot be part of any
@@ -123,7 +155,7 @@ static uint8_t firstCallback(Pixel *pixel,int32_t row,int32_t col,void *callback
 		data->lastunknown->memchigher=newunknown;
 
 		// Check should edge be created.
-		if(allowUnknownPixelGraphEdge(data->dimsblockranges+row,col,data->blockdescs[row].length,data->lastunknown->col)){
+		if(allowUnknownPixelGraphEdge(data->dimsblockranges+row,col,data->blockdescs[row].length,data->lastunknown->col,edge)){
 			newunknown->clower=data->lastunknown;
 			// Update last unknown having chigher pixel.
 			data->lastunknown->chigher=newunknown;
@@ -179,7 +211,7 @@ static uint8_t secondCallback(Pixel *pixel,int32_t row,int32_t col,void *callbac
 		#endif
 	}
 	else if(data->lastunknown->row<row && data->lastunknown->col==col){
-		if(allowUnknownPixelGraphEdge(data->dimsblockranges+col,row,data->blockdescs[col].length,data->lastunknown->row)){
+		if(allowUnknownPixelGraphEdge(data->dimsblockranges+col,row,data->blockdescs[col].length,data->lastunknown->row,edge)){
 			// Last unknown was row smaller.
 			// Update selectedunknown to have row lower.
 			selectedunknown->rlower=data->lastunknown;
@@ -534,23 +566,6 @@ static void calcSwitchingComponentBounds(struct SwcBounds *bounds,SwitchingCompo
 		ite=ite->itelink;
 	}
 }
-static int32_t findLeftmostCover(int32_t pixel,BlocksRanges *ranges,int32_t length){
-	int32_t blockindex;
-	for(blockindex=0; blockindex<length; blockindex++){
-		if(ranges->blocksrangelefts[blockindex]<=pixel && pixel<=ranges->blocksrangerights[blockindex]){
-			break;
-		}
-	}
-	return blockindex;
-}
-static int32_t findRightmostCover(int32_t pixel,BlocksRanges *ranges,int32_t length){
-	// If block does not exists variable blockindex here equals length.
-	int32_t blockindex=findLeftmostCover(pixel,ranges,length);
-	while(blockindex<length-1 && ranges->blocksrangelefts[blockindex+1]<=pixel && pixel<=ranges->blocksrangerights[blockindex+1]){
-		blockindex++;
-	}
-	return blockindex;
-}
 
 static int8_t CheckOneBlackColourableOnePixelCompliance(int32_t x1,int32_t x2,EdgeValue *restrict edge,Description *restrict desc, BlocksRanges *restrict ranges,int32_t *restrict pcoverblockx1,int8_t fullbackallowed){
 	// Get the blocks which cover the pixels?
@@ -561,14 +576,14 @@ static int8_t CheckOneBlackColourableOnePixelCompliance(int32_t x1,int32_t x2,Ed
 	switch(edge->state){
 		case NONO_EDGE_STATE_NEXTTO:
 		case NONO_EDGE_STATE_FULL_WHITE:
-			if(desc->lengths[*pcoverblockx1]==1 && desc->lengths[coverblockx2]==1 && desc->lengths[*pcoverblockx1]==desc->lengths[coverblockx2]){
+			if(desc->lengths[*pcoverblockx1]==1 && desc->lengths[coverblockx2]==1 && *pcoverblockx1==coverblockx2){
 				return 1;
 			}
 			break;
 		case NONO_EDGE_STATE_FULL_BLACK:
 			// No need to check block exchange since block
 			// should change if partial solver is used.
-			if(fullbackallowed && desc->lengths[coverblockx2]-edge->stateinfo.blackcount==1){
+			if(fullbackallowed && desc->lengths[coverblockx2]-edge->stateinfo.blackcount==1 && *pcoverblockx1==coverblockx2){
 				return 1;
 			}
 			break;
