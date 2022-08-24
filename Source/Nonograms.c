@@ -26,20 +26,20 @@ int8_t colourLinesPixel(enum Pixel *lines,int32_t nth,uint32_t stride,enum Pixel
 	}
 	return 1;
 }
-enum Pixel getPixel(Nonogram *nono,Table *table,int32_t row,int32_t col){
+enum Pixel getTablePixel (Nonogram *nono,Table *table,int32_t row,int32_t col){
 	return table->pixels[row*nono->width+col].e;
 }
-void colourPixel(Nonogram *nono,Table *table,int32_t row,int32_t col,enum Pixel colour){
+void colourTablePixel (Nonogram *nono,Table *table,int32_t row,int32_t col,enum Pixel colour){
 	table->pixels[row*nono->width+col].e=colour;
 }
-int32_t biggestDescriptionSize(const Description *desc,int32_t length){
+int32_t getBiggestDescriptionSize(const Description *desc,int32_t length){
 	int32_t max=desc[length-1].length;
 	for(int32_t i=length-2;i>=0;i--){
 		if(max<desc[i].length) max=desc[i].length;
 	}
 	return max;
 }
-int32_t descriptionsLength(const Description *desc){
+int32_t calcDescriptionsLength(const Description *desc){
 	// NOTE: This work for zero description since there is
 	//       one block of size zero hence answer is zero.
 	int32_t length=desc->length-1;
@@ -274,9 +274,9 @@ uint8_t nonogramGenSvgStart(const int file,const Nonogram * restrict nono,NonoHT
 			//       need vs complexity.
 			// For approximate round to highest 5px*n.
 			// Variable is read as "description abscissa offset".
-			int32_t descabscissaoffset=biggestDescriptionSize(nono->rowsdesc,nono->height)*18;
+			int32_t descabscissaoffset=getBiggestDescriptionSize(nono->rowsdesc,nono->height)*18;
 			descabscissaoffset=descabscissaoffset+(5-(descabscissaoffset%5));
-			int32_t descordinateoffset=biggestDescriptionSize(nono->colsdesc,nono->width)*17;
+			int32_t descordinateoffset=getBiggestDescriptionSize(nono->colsdesc,nono->width)*17;
 			// Divade by 5 then add 1 if remaider was bigger then 2 and times five back.
 			// Should be same as rounding to nearest 5;
 			descordinateoffset=(descordinateoffset/5+(descordinateoffset%5>2))*5;
@@ -989,7 +989,7 @@ int nonogramWriteSvg(int file,NonoHTML *restrict htmlpage,const Nonogram *restri
 	for(uint8_t *pixel=htmlpage->pixelindicatorstart;pixel<=htmlpage->pixelindicatorend;pixel++){
 		if(*pixel=='#'){
 			pixel++;
-			// Since pixelcounter is decreaed before used as index
+			// Since pixelcounter is decreased before used as index
 			// counter should be alright.
 			switch(table->pixels[--pixelcounter].e){
 				case UNKNOWN_PIXEL:*pixel='U'; break;

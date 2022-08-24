@@ -14,7 +14,7 @@ int8_t nonogramIsValid(Nonogram *nono){
 	int32_t rowpixelcount=0;
 	for(int32_t row=nono->height-1;row>=0;row--){
 		Description *desc=nono->rowsdesc+row;
-		if(descriptionsLength(desc)>nono->width) return 1;
+		if(calcDescriptionsLength(desc)>nono->width) return 1;
 		for(int32_t block=desc->length-1;block>0;block--){
 			if(desc->lengths[block]==0) return 2;
 			rowpixelcount+=desc->lengths[block];
@@ -25,7 +25,7 @@ int8_t nonogramIsValid(Nonogram *nono){
 	int32_t colpixelcount=0;
 	for(int32_t col=nono->width-1;col>=0;col--){
 		Description *desc=nono->colsdesc+col;
-		if(descriptionsLength(desc)>nono->height) return 3;
+		if(calcDescriptionsLength(desc)>nono->height) return 3;
 		for(int32_t block=desc->length-1;block>0;block--){
 			if(desc->lengths[block]==0) return 4;
 			colpixelcount+=desc->lengths[block];

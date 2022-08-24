@@ -1,5 +1,6 @@
 CFLAGS:=-Wall -Wno-unused-result -std=gnu17
 NONO_MAIN_EXE=NonoMain.exe
+NONO_CONF_GEN_EXE=NonoConfGen.exe
 
 # Check is debug enabled
 DEBUG ?= 1
@@ -13,8 +14,13 @@ endif
 
 SOURCE_FILES:=Source/NonoMain.c Source/Nonograms.c Source/LogicalRules.c Source/ValidityCheck.c Source/SwitchingComponent.c
 
-.PHONY: all NonoSolverGraph
-all: $(NONO_SOLVER_EXE)
+SOURCE_FILES_NONO_CONG_GEN_EXE:=Source/NonoConfGen.c Source/Nonograms.c
+
+PROFILE ?= 0
+ifeq ($(PROFILE),1)
+  CFLAGS+=-D_PROFILE_
+  SOURCE_FILES+=Source/Profiling.c
+endif
 
 .PHONY: all
 all: $(NONO_MAIN_EXE) $(NONO_CONF_GEN)
@@ -24,7 +30,11 @@ $(NONO_MAIN_EXE): $(SOURCE_FILES)
 	gcc $(CFLAGS) -o$@ $^
 # Create the solver vith analyzer run.
 NonoSolver_Analyzer: $(SOURCE_FILES)
-	gcc -fanalyzer -o$(NONO_SOLVER_EXE) $^
+	gcc -fanalyzer -o$(NONO_MAIN_EXE) $^
+
+# Build nonogram configuration file generator.
+$(NONO_CONF_GEN_EXE): $(SOURCE_FILES_NONO_CONG_GEN_EXE)
+	gcc $(CFLAGS) -o$@ $^
 
 # Build object directory
 $(O):

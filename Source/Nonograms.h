@@ -1,5 +1,5 @@
 /*
-* Mobule given basic structures and functions for handling nonograms.
+* Module given basic structures and functions for handling nonograms.
 */
 #ifndef _NONOGRAMS_H_
 #define _NONOGRAMS_H_
@@ -54,12 +54,13 @@ typedef struct{
 }Nonogram;
 /*
 * Enumerate for the pixel's of Nonograms.
+* Attribute packed needed make enum 1 byte.
 */
 enum Pixel{
 	UNKNOWN_PIXEL,
 	WHITE_PIXEL,
 	BLACK_PIXEL,
-};
+}__attribute__ ((__packed__));
 typedef union{
 	enum Pixel e;
 	uint8_t b;
@@ -137,7 +138,7 @@ enum Pixel *getLinePixel(enum Pixel *lines,int32_t nth,uint32_t stride);
 * Returns:
 *   Returns 1 on success and 0 if location is already painted.
 */
-void colourPixel(Nonogram *nono,Table *table,int32_t row,int32_t col,enum Pixel colour);
+void colourTablePixel(Nonogram *nono,Table *table,int32_t row,int32_t col,enum Pixel colour);
 /*
 * Get pixel colour at row and col location.
 *
@@ -147,21 +148,19 @@ void colourPixel(Nonogram *nono,Table *table,int32_t row,int32_t col,enum Pixel 
 * Returns:
 *   Returns the colour.
 */
-enum Pixel getPixel(Nonogram *nono,Table *table,int32_t row,int32_t col);
+enum Pixel getTablePixel(Nonogram *nono,Table *table,int32_t row,int32_t col);
 /*
 * Get biggest number of blocks in array of descriptions.
 * If no descriptions are given then length returned is 0.
 *
 * Parameters:
 *   descs is array of descriptions.
-*
-* NOTE: ARGUMENT desc IS NOT NULL CHECKED!
 */
-int32_t biggestDescriptionSize(const Description *desc,int32_t length);
+int32_t getBiggestDescriptionSize(const Description *desc,int32_t length);
 /*
-* Calcualte description's length
+* Calculate description's length
 */
-int32_t descriptionsLength(const Description *desc);
+int32_t calcDescriptionsLength(const Description *desc);
 /*
 * Initialize block's range.
 *

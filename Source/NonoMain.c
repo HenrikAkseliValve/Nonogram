@@ -16,6 +16,11 @@
 #include"ValidityCheck.h"
 #include"SwitchingComponent.h"
 #include"Etc.h"
+#ifdef _PROFILE_
+	#include<time.h>
+	#include"Profiling.h"
+#endif
+
 
 /*
 * Structures for storing rule operations from the command line.
@@ -118,9 +123,22 @@ int main(int argc,char *argv[]){
 
 	// Single rule operation list.
 	struct SingleRule *rulelist=NULL;
-
+	// Structure to store information about the nonogram.
 	Nonogram nono;
 	
+	// Setup profiling if asked.
+	#if 1//def _PROFILE_
+		time_t rawtime;
+		time(&rawtime);
+		struct tm *processedtime;
+		processedtime=localtime(&rawtime);
+		char profbuffpath[]="/tmp/data_xx:xx:xx.0.txt";
+		strftime(profbuffpath+10,8,"%d:%m:%y",processedtime);
+		initProfiling(0,1,profbuffpath);
+		profbuffpath[19]='1';
+	#endif
+
+
 	// Handle the options.
 	{
 		// Pointer to last member of list is to speed up
@@ -200,7 +218,7 @@ int main(int argc,char *argv[]){
 					}
 					break;
 				case 'F':
-				case 'f':
+				case 'f':{
 					// User wants to forcefully color a pixel.
 					int32_t pixelcolumn=atoi(optarg);
 					// Read coordinates of the pixel.
@@ -227,7 +245,8 @@ int main(int argc,char *argv[]){
 					((struct ForcefullyColour*)rulelistlast)->check=(opt=='f'?1:0);
 					flags.onerule=1;
 					break;
-				case 'I':
+				}
+				case 'I':{
 					// Add the operations.
 					const enum OP opstoadd[]={LOGICAL_RULE0,LOGICAL_RULE0,LOGICAL_RULE11,LOGICAL_RULE11};
 					const uint32_t lines[]={0,1,0,1};
@@ -243,6 +262,7 @@ int main(int argc,char *argv[]){
 					}
 					flags.onerule=1;
 					break;
+				}
 				case 'p':
 					flags.dopartialsolution=1;
 					break;
@@ -261,7 +281,7 @@ int main(int argc,char *argv[]){
 				case 'e':
 					flags.dosolutioncountingestimate=1;
 					break;
-				case 'h':
+				case 'h':{
 					const char usage[]="Usage: NonoSolver.exe [options] cfgfile"
 					                    "Options:\n"
 					                    "\t-s output SVG.\n"
@@ -279,6 +299,7 @@ int main(int argc,char *argv[]){
 					                    "\t-h display this information.\n";
 					(void)write(STDOUT_FILENO,usage,sizeof(usage)-1);
 					break;
+				}
 				case ':':
 				case '?':
 					goto GETOPT_PARSING_ERROR;
@@ -378,13 +399,13 @@ int main(int argc,char *argv[]){
 							else if(ruleop.id==FORCE_COLOR){
 								// Forcefully colour a pixel.
 								struct ForcefullyColour *cmd=(struct ForcefullyColour*)rulelist;
-								if(cmd->check && getPixel(&nono,&tables.firsttable,cmd->row,cmd->column)!=UNKNOWN_PIXEL){
+								if(cmd->check && getTablePixel (&nono,&tables.firsttable,cmd->row,cmd->column)!=UNKNOWN_PIXEL){
 									(void)write(STDERR_FILENO,"ERROR: Trying colour pixel which is already coloured!\n",54);
 									goto ERROR_AT_NONOGRAMGENSVG;
 								}
 								// Sanity check cmd->row and cmd->column
 								if(0<=cmd->row && cmd->row<nono.height && 0<=cmd->column && cmd->column<nono.width){
-									colourPixel(&nono,&tables.firsttable,cmd->row,cmd->column,cmd->colour);
+									                           colourTablePixel (&nono,&tables.firsttable,cmd->row,cmd->column,cmd->colour);
 								}
 								else (void)write(STDERR_FILENO,"WARNING: single line rule ignored as colouring would be off!\n",61);
 							}
@@ -398,8 +419,16 @@ int main(int argc,char *argv[]){
 						}
 					}
 
-
+					#ifdef _PROFILE_
+						newSample(0,nono.width*nono.height);
+						// Profiling for the whole algorithm.
+						tickProfiling(0,0);
+					#endif
 					if(flags.dopartialsolution){
+						#ifdef _PROFILE_
+							// Profile partial solver.
+							tickProfiling(0,1);
+						#endif
 						// Simple loop every logical rule until no
 						// updates where made.
 						int update;
@@ -437,6 +466,10 @@ int main(int argc,char *argv[]){
 							}
 
 						}while(update);
+						#ifdef _PROFILE_
+							// End profiling of partial solver.
+							tockProfiling(0,1);
+						#endif
 					}
 
 					// Did user ask for partial solution?
@@ -478,16 +511,35 @@ int main(int argc,char *argv[]){
 						uint32_t undetected=0;
 						SwitchingComponent *scomp;
 						int32_t numberofswitchingcomps;
+						#ifdef _PROFILE_
+							tickProfiling(0,2);
+						#endif
 						if((numberofswitchingcomps=detectSwitchingComponents(&nono,&tables,&scomp))>0){
 
+							#ifdef _PROFILE_
+								initProfiling(1,numberofswitchingcomps,profbuffpath);
+							#endif
 							// Detect every switching component.
 							for(int32_t comp=0;comp<numberofswitchingcomps;comp++){
+								#ifdef _PROFILE_
+									newSample(1,scomp[comp].sizeofunknownpixelgraph);
+									tickProfiling(1,0);
+								#endif
 								uint32_t temp=NonoDetectOneBlackColourableOnePixelSquareSwitchingComponent(&nono,&tables,scomp+comp);
+								#ifdef _PROFILE_
+									tockProfiling(1,0);
+								#endif
 								if(temp){
 									solutioncount+=temp;
 								}
 								else undetected++;
 							}
+							#ifdef _PROFILE_
+								tockProfiling(1,0);
+								tockProfiling(0,2);
+								tockProfiling(0,0);
+								finalizePlot(1,0);
+							#endif
 
 							// Print out number of solution counted.
 							PRINT_SOLUTION_COUNT:
@@ -510,7 +562,6 @@ int main(int argc,char *argv[]){
 							// One solution.
 							(void)write(STDOUT_FILENO,"Only one solution.\n",19);
 						}
-
 					}
 
 					if(flags.dosvg){
