@@ -127,7 +127,7 @@ int main(int argc,char *argv[]){
 	Nonogram nono;
 	
 	// Setup profiling if asked.
-	#if 1//def _PROFILE_
+	#ifdef _PROFILE_
 		time_t rawtime;
 		time(&rawtime);
 		struct tm *processedtime;
@@ -326,7 +326,12 @@ int main(int argc,char *argv[]){
 							goto ERROR_AT_NONOGRAMGENSVG;
 						}
 					}
-
+					#ifdef _PROFILE_
+						newSample(0,nono.width*nono.height);
+						// Profiling for the whole algorithm.
+						tickProfiling(0,0);
+						tickProfiling(0,1);
+					#endif
 					if(flags.doprevaliditycheck){
 						// Do check of validity to nonogram before solving.
 						// Validity check hence is only total description
@@ -419,11 +424,6 @@ int main(int argc,char *argv[]){
 						}
 					}
 
-					#ifdef _PROFILE_
-						newSample(0,nono.width*nono.height);
-						// Profiling for the whole algorithm.
-						tickProfiling(0,0);
-					#endif
 					if(flags.dopartialsolution){
 						#ifdef _PROFILE_
 							// Profile partial solver.
@@ -466,11 +466,12 @@ int main(int argc,char *argv[]){
 							}
 
 						}while(update);
-						#ifdef _PROFILE_
+
+					}
+					#ifdef _PROFILE_
 							// End profiling of partial solver.
 							tockProfiling(0,1);
-						#endif
-					}
+					#endif
 
 					// Did user ask for partial solution?
 					if(flags.dosvg && flags.writepartialsolution){
@@ -538,7 +539,8 @@ int main(int argc,char *argv[]){
 								tockProfiling(1,0);
 								tockProfiling(0,2);
 								tockProfiling(0,0);
-								finalizePlot(1,0);
+								finalizePlot(0,3);
+								finalizePlot(1,1);
 							#endif
 
 							// Print out number of solution counted.
