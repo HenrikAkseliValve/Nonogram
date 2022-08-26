@@ -6,10 +6,8 @@ NONO_CONF_GEN_EXE=NonoConfGen.exe
 DEBUG ?= 1
 ifeq ($(DEBUG),1)
   CFLAGS+= -g -D_DEBUG_
-  O=.debug
 else
   CFLAGS+= -O3 -D_RELEASE_
-  O=.release
 endif
 
 SOURCE_FILES:=Source/NonoMain.c Source/Nonograms.c Source/LogicalRules.c Source/ValidityCheck.c Source/SwitchingComponent.c

@@ -77,7 +77,7 @@ static void diffTimespec(const struct timespec *restrict s,const struct timespec
 	result->tv_nsec=e->tv_nsec-s->tv_nsec;
 
 	// Check that nsec of s was more than e.
-  if (result->tv_nsec<0) {
+  if (result->tv_nsec<0){
     result->tv_nsec+=1000000000;
     result->tv_sec--;
   }
@@ -126,23 +126,34 @@ void finalizePlot(int32_t index,int32_t numcols){
 
 			// Write the difference result as number of nanoseconds.
 			// This means tv_sec is written first then tv_nsec so
-			// so that.
+			// so that number is comes in right order. In-between
+			// may need zero padding.
 			//
 			// DO NOT WRITE tv_sec IF IT IS ZERO. This would cause
 			// additional zero front of the number.
 			output[2*col+2].iov_base=decbuffer[col];
 			if(diffresult.tv_sec!=0){
+				// Write seconds first.
 				uint32_t intlen=i64toalen(diffresult.tv_sec);
 				i64toa(diffresult.tv_sec,decbuffer[col],intlen);
 				output[2*col+2].iov_len=intlen;
+				// Nanoseconds have to written so that zeros are added
+				// if number is too low.
+				// 9 here comes from fact that 10^9 nanoseconds is seconds
+				// hence tv_nsec is number between 0 to 999'999'999.
+				intlen=i64toalen(diffresult.tv_nsec);
+				for(uint32_t i=9-1;i>=intlen;i--){
+					decbuffer[col][i]='0';
+				}
+				// Write the number after zeros have been added.
+				i64toa(diffresult.tv_nsec,decbuffer[col]+output[2*col+2].iov_len+9-intlen,intlen);
+				output[2*col+2].iov_len+=intlen;
 			}
 			else{
-				output[2*col+2].iov_len=0;
-			}
-			{
+				// Just write nano seconds
 				uint32_t intlen=i64toalen(diffresult.tv_nsec);
-				i64toa(diffresult.tv_nsec,decbuffer[col]+output[2*col+2].iov_len,intlen);
-				output[2*col+2].iov_len+=intlen;
+				i64toa(diffresult.tv_nsec,decbuffer[col],intlen);
+				output[2*col+2].iov_len=intlen;
 			}
 		}
 		// Write the result.
