@@ -44,6 +44,7 @@ To visualize a nonogram use `-s` option with _Nonomain.exe_. Program outputs std
 ./NonoMain.exe -s /NonogramConfs/Logical_Solver_Test2.cfg > /tmp/nono.html
 $BROWSER /tmp/nono.html
 ```
+![](Doc/resources/readme-image1.svg)
 
 To manually apply a rule first apply initialization with `-I` option then apply rule via `-r`. For example, to add some pixels at bottom : 
 ```bash
