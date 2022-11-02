@@ -145,7 +145,7 @@ struct NonogramLoadConfResult nonogramLoadConf(int file,Nonogram *nono){
 	struct stat fileinfo;
 	if(fstat(file,&fileinfo)==0){
 		// Check file is regular.
-		// TODO: Does this prevent over internet?
+		// TODO: Does this prevent over internet? Yes pipe isn't read.
 		if(S_ISREG(fileinfo.st_mode)){
 			uint8_t *buffer=malloc(fileinfo.st_size+1);
 			buffer[fileinfo.st_size]='\0';

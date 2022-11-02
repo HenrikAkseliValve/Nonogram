@@ -10,6 +10,7 @@
 #include<string.h>
 #include<sys/uio.h>
 #include<sys/random.h>
+#include<limits.h>
 #include"Nonograms.h"
 #include"ValidityCheck.h"
 #include"Etc.h"
@@ -36,7 +37,7 @@ jmp_buf ErrorJmpBuffer;
 static uint8_t RBuff[256];
 static ssize_t RBuffLen=0;
 static ssize_t RBuffIndex=0;
-static uint8_t RollingBitmask;
+static uint8_t RollingBitmask=0x01;
 void AllocRBuff(int32_t sizeestimate){
 	// Sizeestimate should not be more then RBuff.
 	int32_t length=0;
@@ -330,7 +331,9 @@ void oneColourableOnePixelSSCPartialgen_internal(Nonogram *nono,Table *solution,
 		for(int32_t r=sizecoeffx;r>0;r--){
 			if(throwPerfectCoin(RBuffestimate)){
 				// Coin toss decided event in-between.
-				(void)write(STDERR_FILENO,"DEBUG:IN-BETWEEN\n",17);
+				#if defined(_DEBUG_) && defined(EDGE_MESSAGE)
+					(void)write(STDERR_FILENO,"DEBUG:IN-BETWEEN\n",17);
+				#endif
 				inbetweenlengths[i]=sampleBinomialNCoinFlips(RBuffestimate,16)+3;
 				if(fullblackallowed){
 					for(int32_t a=0;a<sizecoeffx;a++){
@@ -417,7 +420,7 @@ void oneColourableOnePixelSSCPartialgen_internal(Nonogram *nono,Table *solution,
 		for(int32_t edgei=0;edgei<numberofsides;edgei++){
 			// Colour the first unknown on the row.
 			row=1;
-			colourTablePixel (nono,solution,row,col,UNKNOWN_PIXEL);
+			colourTablePixel(nono,solution,row,col,UNKNOWN_PIXEL);
 			for(int32_t urow=0;urow<numberofsides;urow++){
 				for(int32_t i=1;i<=inbetweenlengths[edgei];i++){
 					colourEdge(nono,solution,row,col+i,i,inbetweenlengths[edgei],types[edgei*sizecoeffx+urow]);
@@ -425,7 +428,7 @@ void oneColourableOnePixelSSCPartialgen_internal(Nonogram *nono,Table *solution,
 				// Move to next unknown pixel along the column
 				row+=inbetweenlengths[urow+numberofsides]+1;
 				// Colour the unknown pixel.
-				colourTablePixel (nono,solution,row,col,UNKNOWN_PIXEL);
+				colourTablePixel(nono,solution,row,col,UNKNOWN_PIXEL);
 			}
 			// Last row is handled outside of loop.
 			for(int32_t i=1;i<=inbetweenlengths[edgei];i++){
@@ -620,11 +623,12 @@ void concatenateVLGen(Nonogram *nono,Table *solution,int32_t sizecoeffx,int32_t 
 	}
 
 	// Calculate height of final nonogram.
-	//TODO: the process.
+	// Add two rows of stability padding between the generated nonograms.
 	nono->height=0;
-	for(int32_t i=0;i<sizecoeffy;i++){
-		nono->height+=nonotemps[i].height;
+	for(int32_t i=0;i<sizecoeffy-1;i++){
+		nono->height+=nonotemps[i].height+2;
 	}
+	nono->height+=nonotemps[sizecoeffy-1].height;
 
 	// Allocate a partial solution.
 	solution->pixels=malloc(sizeof(Pixel)*nono->width*nono->height);
@@ -648,6 +652,16 @@ void concatenateVLGen(Nonogram *nono,Table *solution,int32_t sizecoeffx,int32_t 
 			}
 		}
 		rowoffset+=nonotemps[i].height;
+
+		// Colour the safe the padding if not last nonotemp.
+		if(i<sizecoeffy-1){
+			// Filling should be black so that no fullwhite edges are created.
+			for(int32_t col=0;col<nono->width;col++){
+				colourTablePixel(nono,solution,rowoffset,col,BLACK_PIXEL);
+				colourTablePixel(nono,solution,rowoffset+1,col,BLACK_PIXEL);
+			}
+			rowoffset+=2;
+		}
 	}
 
 	free(solutiontemps);
@@ -767,7 +781,7 @@ int main(int argc,char *argv[]){
 							                 "\t\t* \e[3mnone\e[0m No generator is used. Removes effects of any previous -g.\n"
 							                 "\t\t* \e[3mNextto-SSC-Gen\e[0m Generates sizecoeffx x sizecoeffx nonogram with\n\t\t"" "" ""descriptions of one block of length one.\n"
 							                 "\t\t* \e[3mOne-Black-Colourable-One-Pixel-SSC-Gen\e[0m Generate sizecoeffx x\n\t\t"" "" "" ""sizecoeffx sizes One Black Colourable One pixel SSC.\n"
-															 "\t\t* \e[3mVLConcatenate\e[0m Concatenate random nonograms to vertical line.\n"
+							                 "\t\t* \e[3mVLConcatenate\e[0m Concatenate random nonograms to vertical line.\n"
 							                 //"\t\t* \e[3mRConcatenate\e[0m Concatenate other generators to one Nonogram \n\t\t"" "" "" ""somewhat random manner. Use sizecoeffy to control number of\n\t\t"" "" "" ""generators are concatenated. (subject to change to be more\n\t\t"" "" "" ""controllable).\n"
 							                 "\t-n -m options effect size of the outputted nonogram. Option -n effects\n\t"" "" "" "" "" "" "" ""sizecoeffx and option effects sizecoeffy. Not all generators\n\t"" "" "" "" "" "" "" ""use sizecoeffy. Please read generator's description know effect\n\t"" "" "" "" "" "" "" ""sizecoeffx and sizecoeffy have.\n"
 							                 "\t-h display this information.\n";
@@ -776,7 +790,7 @@ int main(int argc,char *argv[]){
 					return 0;
 				case 'n':
 					sizecoeffx=atoi(optarg);
-					if(sizecoeffy==0){
+					if(sizecoeffx==0){
 						(void)write(STDERR_FILENO,"ERROR: sizecoeffx cannot be zero!\n",34);
 						return 2;
 					}
@@ -837,7 +851,7 @@ int main(int argc,char *argv[]){
 
 				// Read the solution to get lengts of column descriptions.
 				// Also count the total number of blocks.
-				uint32_t totalnumberofblocks=0;//BUG: totalnumberofblocks is zero?
+				uint32_t totalnumberofblocks=0;
 				for(int32_t col=nono.width-1;col>=0;col--){
 					// Flag for checking is previous pixel black or not.
 					uint8_t flag=0;
@@ -985,18 +999,22 @@ int main(int argc,char *argv[]){
 				//  - starting comment +1
 				//  - width and height of nonogram with newline between after two newlines after +4
 				//  - every description's block with space between and newline ending +2*number of blocks
-				//     - Only exceptions to this is the last column description which ends the file.
 				//     - End of row descriptions has extra newline seperating rows from columns.
-				struct iovec *segments=malloc(sizeof(struct iovec)*(1+4+2*(totalnumberofblocks-1)+1));
+				//  - Every row and column description line in the file starts with number of blocks +nono.width+nono.height
+				struct iovec *segments=malloc(sizeof(struct iovec)*(nono.height+nono.width+1+4+2*(totalnumberofblocks)+1));
 				if(segments){
 					// Constant.
 					const char comment_header[]={'#','T','h','i','s',' ','n','o','n','o','g','r','a','m',' ','c','o','n','f','i','g','u','r','a','t','i','o','n',' ','f','i','l','e',' ','w','a','s',' ','c','r','e','a','t','e','d',' ','b','y',' ','N','o','n','o','C','o','n','f','G','e','n','.','e','x','e','\n'};
 					const char newline_newline[]={'\n','\n'};
 					const char space[]={' '};
 					
-					// For easier memory manegement.
+					// For easier memory manegement (mostly freeing).
 					//TODO: this isn't really needed. Update later only use iov_base.
-					uint8_t **intstrings=malloc((totalnumberofblocks+2)*sizeof(uint8_t*));
+					//      This update can be done by removing space and newline having there
+					//      own iovec. This consumes less memory and same amount of CPU time.
+					//      less memory comes from having smaller iovec array and CPU time
+					//      comes from fact iovec to space or newline is not set.
+					uint8_t **intstrings=malloc((nono.height+nono.width+totalnumberofblocks+2)*sizeof(uint8_t*));
 					if(intstrings){
 						int32_t intstringsindex=-1;
 
@@ -1010,6 +1028,7 @@ int main(int argc,char *argv[]){
 							segments[1].iov_len=i32toalen(nono.width);
 							intstrings[intstringsindex]=malloc(segments[1].iov_len);
 							if(!intstrings[intstringsindex]){
+								intstringsindex--;
 								(void)write(STDERR_FILENO,"ERROR: Allocation of integer string for width failed!\n",45);
 								returnval=202;
 								goto FREE_SEGMENTS;
@@ -1024,6 +1043,7 @@ int main(int argc,char *argv[]){
 							segments[3].iov_len=i32toalen(nono.height);
 							intstrings[intstringsindex]=malloc(segments[3].iov_len);
 							if(!intstrings[intstringsindex]){
+								intstringsindex--;
 								(void)write(STDERR_FILENO,"ERROR: Allocation of integer string for height failed!\n",45);
 								returnval=203;
 								goto FREE_SEGMENTS;
@@ -1038,27 +1058,45 @@ int main(int argc,char *argv[]){
 						// of blocks for each row or column description, indexing
 						// is done vie variable segmentsindex.
 						// Starting index 4 is because indexes 0 to 4 were used above.
-						uint32_t segmentsindex=4;
+						int32_t segmentsindex=4;
 
-						// write row descriptions
-						for(int32_t row=0;row<nono.height;row++){
+						// Write column descriptions
+						for(int32_t col=0;col<nono.width;col++){
 							int32_t k;
-							for(k=0;k<nono.rowsdesc[row].length;k++){
+							// Write number of blocks in the row.
+							segmentsindex++;
+							segments[segmentsindex].iov_len=i32toalen(nono.colsdesc[col].length);
+							intstringsindex++;
+							intstrings[intstringsindex]=malloc(segments[segmentsindex].iov_len+1);
+							if(!intstrings[intstringsindex]){
+								intstringsindex--;
+								returnval=204;
+								goto FREE_SEGMENTS;
+							}
+							// Setup the segment
+							i32toa(nono.colsdesc[col].length,intstrings[intstringsindex],segments[segmentsindex].iov_len);
+							segments[segmentsindex].iov_base=intstrings[intstringsindex];
+							// Add the space.
+							intstrings[intstringsindex][segments[segmentsindex].iov_len]=' ';
+							segments[segmentsindex].iov_len+=1;
+
+							for(k=0;k<nono.colsdesc[col].length;k++){
 
 								// block's character length
 								segmentsindex++;
-								segments[segmentsindex].iov_len=i32toalen(nono.rowsdesc[row].lengths[k]);
+								segments[segmentsindex].iov_len=i32toalen(nono.colsdesc[col].lengths[k]);
 
 								// Allocate memory for the string.
 								intstringsindex++;
 								intstrings[intstringsindex]=malloc(segments[segmentsindex].iov_len);
 								if(!intstrings[intstringsindex]){
+									intstringsindex--;
 									returnval=204;
 									goto FREE_SEGMENTS;
 								}
 
 								// Setup the segment.
-								i32toa(nono.rowsdesc[row].lengths[k],intstrings[intstringsindex],segments[segmentsindex].iov_len);
+								i32toa(nono.colsdesc[col].lengths[k],intstrings[intstringsindex],segments[segmentsindex].iov_len);
 								segments[segmentsindex].iov_base=intstrings[intstringsindex];
 
 								// After a bloc's length is written ether space or newline is written.
@@ -1068,13 +1106,13 @@ int main(int argc,char *argv[]){
 								// This depends on is the last row's description to be written or not.
 								//TODO: move to outside of inner loop.
 								segmentsindex++;
-								if(k<nono.rowsdesc[row].length-1){
+								if(k<nono.colsdesc[col].length-1){
 									segments[segmentsindex].iov_base=(char*)space;
 									segments[segmentsindex].iov_len=1;
 								}
 								else{
 									segments[segmentsindex].iov_base=(char*)newline_newline;
-									if(row<nono.height-1){
+									if(col<nono.width-1){
 										segments[segmentsindex].iov_len=1;
 									}
 									else{
@@ -1084,52 +1122,76 @@ int main(int argc,char *argv[]){
 							}
 						}
 
-						// Column descriptions
-						for(int32_t col=0;col<nono.width;col++){
+						// Write Row descriptions
+						for(int32_t row=0;row<nono.height;row++){
+
+							// Write number of blocks in the col.
+							segmentsindex++;
+							segments[segmentsindex].iov_len=i32toalen(nono.rowsdesc[row].length);
+							intstringsindex++;
+							intstrings[intstringsindex]=malloc(segments[segmentsindex].iov_len+1);
+							if(!intstrings[intstringsindex]){
+								intstringsindex--;
+								returnval=204;
+								goto FREE_SEGMENTS;
+							}
+							// Setup the segment
+							i32toa(nono.rowsdesc[row].length,intstrings[intstringsindex],segments[segmentsindex].iov_len);
+							segments[segmentsindex].iov_base=intstrings[intstringsindex];
+							// Add the space
+							intstrings[intstringsindex][segments[segmentsindex].iov_len]=' ';
+							segments[segmentsindex].iov_len+=1;
 
 							int32_t k;
-							for(k=0;k<nono.colsdesc[col].length;k++){
+							for(k=0;k<nono.rowsdesc[row].length;k++){
 
 								// Block's character length
 								segmentsindex++;
-								segments[segmentsindex].iov_len=i32toalen(nono.colsdesc[col].lengths[k]);
+								segments[segmentsindex].iov_len=i32toalen(nono.rowsdesc[row].lengths[k]);
 
 								// Allocate memory for the string.
 								intstringsindex++;
 								intstrings[intstringsindex]=malloc(segments[segmentsindex].iov_len);
 								if(!intstrings[intstringsindex]){
-									returnval=205;
+									intstringsindex--;
+									returnval=204;
 									goto FREE_SEGMENTS;
 								}
 
 								// Setup the segment
-								i32toa(nono.colsdesc[col].lengths[k],intstrings[intstringsindex],segments[segmentsindex].iov_len);
+								i32toa(nono.rowsdesc[row].lengths[k],intstrings[intstringsindex],segments[segmentsindex].iov_len);
 								segments[segmentsindex].iov_base=intstrings[intstringsindex];
 
 								// After a bloc's length is written ether space or newline is written.
 								// Choice depends on is next block in same description or not.
 								// Hence, check was the block written last block of description is made.
-								// Under newline last column newline is not written in as file ends there.
+								// File's ending needs a newline.
 								segmentsindex++;
-								if(k<nono.colsdesc[col].length-1){
+								if(k<nono.rowsdesc[row].length-1){
 									segments[segmentsindex].iov_base=(char*)space;
 									segments[segmentsindex].iov_len=1;
 								}
 								else{
-									if(col<nono.width-1){
-										segments[segmentsindex].iov_base=(char*)newline_newline;
-										segments[segmentsindex].iov_len=1;
-									}
-									else{
-										// Noting since file ends here.
-									}
+									segments[segmentsindex].iov_base=(char*)newline_newline;
+									segments[segmentsindex].iov_len=1;
 								}
 							}
 						}
 
-						writev(STDOUT_FILENO,segments,segmentsindex);
+						segmentsindex+=1;
+						{
+							// Write iov_vecs to IO. There maybe is too many
+							// iov_vecs for one go so loop throught them.
+							//TODO __IOV_MAX maybe -1 to indicate no limit?
+							int32_t i=0;
+							while(i<=segmentsindex-__IOV_MAX){
+								writev(STDOUT_FILENO,segments+i,__IOV_MAX);
+								i+=__IOV_MAX;
+							}
+							writev(STDOUT_FILENO,segments+i,segmentsindex-i);
+						}
 
-						#if 1
+						#if defined(_DEBUG_) && defined(_DEBUG_SVG_OUT_)
 							int fd=open("/tmp/NonoConfDebug.html",O_CREAT | O_TRUNC | O_WRONLY,S_IRUSR | S_IWUSR);
 							if(fd==-1){
 								returnval=209;

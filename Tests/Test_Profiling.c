@@ -50,6 +50,7 @@ int main(int argn,char *argv[]){
 			}
 			tockProfiling(1,0);
 			abscissa1+=abscissa0*count1+count2-k;
+			if(abscissa1<0) abscissa1*=-1;
 		}
 		tockProfiling(0,3);
 	}

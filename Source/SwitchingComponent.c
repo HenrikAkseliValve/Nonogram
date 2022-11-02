@@ -94,7 +94,6 @@ static uint8_t allowUnknownPixelGraphEdge(BlocksRanges *ranges,int32_t pixel,int
 			if(edge->state==NONO_EDGE_STATE_MIX){
 				// If left overlap exist and last unknown pixel was covered by same block sequence then allow.
 				int leftblock=findRightmostCover(lastunknownpos,ranges,numberofblocks);
-				int32_t blkseq;
 				for(int32_t blkseq=leftblock;blkseq<blockindex;blkseq++){
 					if(ranges->blocksrangerights[blkseq]<ranges->blocksrangelefts[blkseq+1]) return 0;
 				}

@@ -142,12 +142,13 @@ void finalizePlot(int32_t index,int32_t numcols){
 				// 9 here comes from fact that 10^9 nanoseconds is seconds
 				// hence tv_nsec is number between 0 to 999'999'999.
 				intlen=i64toalen(diffresult.tv_nsec);
-				for(uint32_t i=9-1;i>=intlen;i--){
-					decbuffer[col][i]='0';
+				for(uint32_t i=0;i<(9-intlen);i++){
+					decbuffer[col][output[2*col+2].iov_len+i]='0';
 				}
+
 				// Write the number after zeros have been added.
 				i64toa(diffresult.tv_nsec,decbuffer[col]+output[2*col+2].iov_len+9-intlen,intlen);
-				output[2*col+2].iov_len+=intlen;
+				output[2*col+2].iov_len+=9;
 			}
 			else{
 				// Just write nano seconds

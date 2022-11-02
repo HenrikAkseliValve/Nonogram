@@ -7,6 +7,7 @@
 #include<string.h>
 #include<fcntl.h>
 #include<unistd.h>
+#include<poll.h>
 #include<stdlib.h>
 #include<assert.h>
 #include<sys/uio.h>
@@ -100,9 +101,11 @@ int32_t (*const Rules[])(enum Pixel *line,int32_t length,uint32_t stride,Descrip
 *   -F#,#{w|b} same as -f but no doesn't check pixel is unknown.
 *   -I Run rule 0 and rule 1.1 every column and row.
 *   -p solve partial solution.
-*   -V{pre|range} do validity check.
+*   -V{pre|range|sc-detectable} do validity check.
 *                 Pre means before any operation.
 *                 Range means do sanity check that block's ranges haven't reduced passed each other.
+*                 sc-detectable means error is reported if partial solutions switching component's
+*                               type is not detected.
 *   -e estimate number of solutions from current state of nonogram's solution.
 *   -h display this information.
 */
@@ -117,7 +120,8 @@ int main(int argc,char *argv[]){
 		uint8_t doblockswapguard:1;
 		uint8_t dosolutioncountingestimate:1;
 		uint8_t writepartialsolution:1;
-	}flags={0,0,0,0,0,0,0,0};
+		uint8_t reportscdetectable:1;
+	}flags={0,0,0,0,0,0,0,0,0};
 	// Write flags when writting SVG table.
 	NonogramWriteSvgFlags writeflags=NONOGRAM_WRITE_SVG_FLAG_EMPTY;
 
@@ -128,14 +132,15 @@ int main(int argc,char *argv[]){
 	
 	// Setup profiling if asked.
 	#ifdef _PROFILE_
-		time_t rawtime;
-		time(&rawtime);
-		struct tm *processedtime;
-		processedtime=localtime(&rawtime);
-		char profbuffpath[]="/tmp/data_xx:xx:xx.0.txt";
-		strftime(profbuffpath+10,8,"%d:%m:%y",processedtime);
-		initProfiling(0,1,profbuffpath);
-		profbuffpath[19]='1';
+		//time_t rawtime;
+		//time(&rawtime);
+		//struct tm *processedtime;
+		//processedtime=localtime(&rawtime);
+		//char profbuffpath[]="/tmp/data_xx:xx:xx.0.txt";
+		//strftime(profbuffpath+10,8,"%d:%m:%y",processedtime);
+		//initProfiling(0,1,profbuffpath);
+		//profbuffpath[19]='1';
+		initProfiling(0,1,"/tmp/data.0.txt");
 	#endif
 
 
@@ -273,6 +278,9 @@ int main(int argc,char *argv[]){
 					else if(strcmp(optarg,"range")==0){
 						flags.doblockswapguard=1;
 					}
+					else if(strcmp(optarg,"sc-detectable")==0){
+						flags.reportscdetectable=1;
+					}
 					else{
 						(void)write(STDOUT_FILENO,"ERROR: not proper argument for -V option!\n",42);
 						goto GETOPT_PARSING_ERROR;
@@ -294,8 +302,9 @@ int main(int argc,char *argv[]){
 					                    "\t-p solve partial solution.\n"
 					                    "\t-e estimate number of solutions from current state of nonogram's solution.\n"
 					                    "\t-V{v} do validity check at point argument asks.\n"
-					                    "\t      With pre means before any operation.\n"
-					                    "\t      With range means do sanity check that block's ranges haven't reduced passed each other after a (partial) solver.\n"
+					                    "\t      with pre before any operation.\n"
+					                    "\t      with range do sanity check that block's ranges haven't reduced passed each other after a (partial) solver.\n"
+					                    "\t      with sc-detectable report an error if there unknown switching component type.\n"
 					                    "\t-h display this information.\n";
 					(void)write(STDOUT_FILENO,usage,sizeof(usage)-1);
 					break;
@@ -307,244 +316,262 @@ int main(int argc,char *argv[]){
 		}
 	}
 
-	// Get the config location.
+	// File descriptior for the configuration file. 
+	int file;
+	// Last argument maybe a file path.
 	if(optind<argc){
-		int file=open(argv[optind],O_RDONLY);
-		if(file>=0){
-			struct NonogramLoadConfResult result=nonogramLoadConf(file,&nono);
-			if(result.id==0){
-				
-				NonoHTML htmlpage;
+		file=open(argv[optind],O_RDONLY);
+	}
+	//TODO: nonogramLoadConf should be rewritten to support pipe reading.
+	else{
+		// Check if stdin has something to read.
+		// struct pollfd polling={.fd=STDIN_FILENO,.events=POLLIN};
+		//if(poll(&polling,1,0)>-1 && polling.revents&POLLIN){
+		//	file=STDIN_FILENO;
+		//}
+		//else{
+			(void)write(STDERR_FILENO,"ERROR: No file to open!\n",24);
+			return 1;
+		//}
+	}
+	int32_t returnval=0;
+	if(file>=0){
+		// Read the config location.
+		struct NonogramLoadConfResult result=nonogramLoadConf(file,&nono);
+		if(result.id==0){
+			
+			NonoHTML htmlpage;
 
-				TableHead tables;
-				if(nonogramInitTableHead(&nono,&tables)){
+			TableHead tables;
+			if(nonogramInitTableHead(&nono,&tables)){
 
-					if(flags.dosvg){
-						// Make the Nonogram SVG template.
-						if(nonogramGenSvgStart(STDOUT_FILENO,&nono,&htmlpage)){
-							(void)write(STDERR_FILENO,"ERROR: SVG template!\n",21);
-							goto ERROR_AT_NONOGRAMGENSVG;
+				if(flags.dosvg){
+					// Make the Nonogram SVG template.
+					if(nonogramGenSvgStart(STDOUT_FILENO,&nono,&htmlpage)){
+						(void)write(STDERR_FILENO,"ERROR: SVG template!\n",21);
+						goto ERROR_AT_NONOGRAMGENSVG;
+					}
+				}
+				#ifdef _PROFILE_
+					newSample(0,nono.width*nono.height);
+					// Profiling for the whole algorithm.
+					tickProfiling(0,0);
+					tickProfiling(0,1);
+				#endif
+				if(flags.doprevaliditycheck){
+					// Do check of validity to nonogram before solving.
+					// Validity check hence is only total description
+					// count check and description length check.
+					if(nonogramIsValid(&nono)!=0){
+						(void)write(STDERR_FILENO,"Warning: Precheck detected non-valid nonogram!\n",47);
+					}
+					else{
+						(void)write(STDERR_FILENO,"Note: Nonogram is valid!\n",25);
+					}
+				}
+
+				if(flags.onerule || flags.dopartialsolution){
+					// Initilize block's ranges stored in first table.
+					for(int32_t col=nono.width-1;col>=0;col--){
+						initBlocksRanges(tables.firsttable.col+col,nono.colsdesc+col,nono.height);
+					}
+					for(int32_t row=nono.height-1;row>=0;row--){
+						initBlocksRanges(tables.firsttable.row+row,nono.rowsdesc+row,nono.width);
+					}
+					writeflags|=NONOGRAM_WRITE_SVG_FLAG_WRITE_BLOCKS_RANGES;
+				}
+
+				// Solve the nonogram until no line can be solved futher
+				// or apply one rule.
+				if(flags.onerule){
+
+					// Go through the list of rules to perform.
+					while(rulelist){
+
+						// Grap Operation structure from rulelist.
+						struct Operation ruleop=rulelist->op;
+
+						// Calculate stride and line.
+						uint32_t stride=ruleop.line*nono.width+(!ruleop.line);
+						int32_t length=ruleop.line*nono.height+(!ruleop.line)*nono.width;
+						static_assert((&nono.rowsdesc)+1==&nono.colsdesc,"Alignment doesn't allow calculate addressing!\n");
+
+						if(ruleop.id<FULL_RUN_RULE){
+
+							// Since this comes from user safety check that line even exists!
+							if(ruleop.linenumber<ruleop.line*nono.width+(!ruleop.line)*nono.height){
+
+								enum Pixel *line=getLine(&nono,ruleop.line,ruleop.linenumber,&tables.firsttable);
+								Description *desc=getDesc(&nono,ruleop.line,ruleop.linenumber);
+								BlocksRanges *ranges=getBlockRanges(&nono,ruleop.line,ruleop.linenumber,&tables.firsttable);
+
+								if(Rules[ruleop.id](line,length,stride,desc,ranges)<0){
+									(void)write(STDERR_FILENO,"ERROR: line rule retuned a error!\n",35);
+									goto GETOPT_PARSING_ERROR;
+								}
+							}
+							else (void)write(STDERR_FILENO,"WARNING: single line rule ignored as line didn't exists!\n",57);
+						}
+						else if(ruleop.id==FULL_RUN_RULE){
+							// Run rule to every line in a dimension
+							int32_t lineamount=(!ruleop.line)*nono.height+ruleop.line*nono.width;
+							for(int32_t linenumber=lineamount-1;linenumber>=0;linenumber--){
+
+								enum Pixel *line=getLine(&nono,ruleop.line,linenumber,&tables.firsttable);
+								Description *desc=getDesc(&nono,ruleop.line,linenumber);
+								BlocksRanges *ranges=getBlockRanges(&nono,ruleop.line,linenumber,&tables.firsttable);
+
+								if(Rules[ruleop.linenumber](line,length,stride,desc,ranges)<0){
+									(void)write(STDERR_FILENO,"ERROR: line rule retuned a error!\n",35);
+									goto GETOPT_PARSING_ERROR;
+								}
+							}
+						}
+						else if(ruleop.id==FORCE_COLOR){
+							// Forcefully colour a pixel.
+							struct ForcefullyColour *cmd=(struct ForcefullyColour*)rulelist;
+							if(cmd->check && getTablePixel (&nono,&tables.firsttable,cmd->row,cmd->column)!=UNKNOWN_PIXEL){
+								(void)write(STDERR_FILENO,"ERROR: Trying colour pixel which is already coloured!\n",54);
+								goto ERROR_AT_NONOGRAMGENSVG;
+							}
+							// Sanity check cmd->row and cmd->column
+							if(0<=cmd->row && cmd->row<nono.height && 0<=cmd->column && cmd->column<nono.width){
+								                           colourTablePixel (&nono,&tables.firsttable,cmd->row,cmd->column,cmd->colour);
+							}
+							else (void)write(STDERR_FILENO,"WARNING: single line rule ignored as colouring would be off!\n",61);
+						}
+
+						// Move to next rule and free memory.
+						{
+							struct SingleRule *notneeded=rulelist;
+							rulelist=rulelist->next;
+							free(notneeded);
 						}
 					}
+				}
+
+				if(flags.dopartialsolution){
+					// Simple loop every logical rule until no
+					// updates where made.
+					int update;
+					do{
+						update=0;
+						{
+							// Handle rows.
+							uint32_t stride=1;
+							int32_t length=nono.width;
+							for(int32_t row=nono.height-1;row>=0;row--){
+								enum Pixel *line=getLine(&nono,0,row,&tables.firsttable);
+								Description *desc=getDesc(&nono,0,row);
+								BlocksRanges *ranges=getBlockRanges(&nono,0,row,&tables.firsttable);
+								for(int8_t rule=(&Rules[12]-&Rules[0])-1;rule>=0;rule--){
+									int32_t temp=Rules[rule](line,length,stride,desc,ranges);
+									if(temp<0) goto ERROR_AT_SOLVER;
+									update+=temp;
+								}
+							}
+						}
+						// Handle column.
+						{
+							uint32_t stride=nono.width;
+							int32_t length=nono.height;
+							for(int32_t col=nono.width-1;col>=0;col--){
+								enum Pixel *line=getLine(&nono,1,col,&tables.firsttable);
+								Description *desc=getDesc(&nono,1,col);
+								BlocksRanges *ranges=getBlockRanges(&nono,1,col,&tables.firsttable);
+								for(int8_t rule=(&Rules[12]-&Rules[0])-1;rule>=0;rule--){
+									int32_t temp=Rules[rule](line,length,stride,desc,ranges);
+									if(temp<0) goto ERROR_AT_SOLVER;
+									update+=temp;
+								}
+							}
+						}
+
+					}while(update);
+
+				}
+				#ifdef _PROFILE_
+						// End profiling of partial solver.
+						tockProfiling(0,1);
+				#endif
+
+				// Did user ask for partial solution?
+				if(flags.dosvg && flags.writepartialsolution){
+					int result=nonogramWriteSvg(STDOUT_FILENO,&htmlpage,&nono,&tables.firsttable,writeflags);
+					if(!result) (void)write(STDERR_FILENO,"ERROR: Partial solution SVG couldn't be written!\n",49);
+				}
+
+				// Did user ask check for block's range swapping?
+				if(flags.doblockswapguard){
+					// Check every row block has swapped
+					for(int32_t row=0;row<nono.height;row++){
+						for(int32_t block=0;block<nono.rowsdesc[row].length;block++){
+							if(tables.firsttable.row[row].blocksrangelefts[block]>tables.firsttable.row[row].blocksrangerights[block]){
+								// SANITY GONE!
+								(void)write(STDERR_FILENO,"SANITY: Block's range swap in one the rows!\n",44);
+								goto ERROR_AT_NONOGRAMGENSVG;
+							}
+						}
+					}
+					// Check every column block has swapped
+					for(int32_t col=0;col<nono.width;col++){
+						for(int32_t block=0;block<nono.colsdesc[col].length;block++){
+							if(tables.firsttable.col[col].blocksrangelefts[block]>tables.firsttable.col[col].blocksrangerights[block]){
+								// SANITY GONE!
+								(void)write(STDERR_FILENO,"SANITY: Block's range swap in one the columns!\n",47);
+								goto ERROR_AT_NONOGRAMGENSVG;
+							}
+						}
+					}
+				}
+
+				// Solution counting estimate algorithm.
+				if(flags.dosolutioncountingestimate){
+					(void)write(STDOUT_FILENO,"Estimating number of solutions.\n",32);
+
+					// Get switching components.
+					uint32_t solutioncount=0;
+					uint32_t undetected=0;
+					SwitchingComponent *scomp;
+					int32_t numberofswitchingcomps;
 					#ifdef _PROFILE_
-						newSample(0,nono.width*nono.height);
-						// Profiling for the whole algorithm.
-						tickProfiling(0,0);
-						tickProfiling(0,1);
+						tickProfiling(0,2);
 					#endif
-					if(flags.doprevaliditycheck){
-						// Do check of validity to nonogram before solving.
-						// Validity check hence is only total description
-						// count check and description length check.
-						if(nonogramIsValid(&nono)!=0){
-							(void)write(STDERR_FILENO,"Warning: Precheck detected non-valid nonogram!\n",47);
-						}
-						else{
-							(void)write(STDERR_FILENO,"Note: Nonogram is valid!\n",25);
-						}
-					}
+					if((numberofswitchingcomps=detectSwitchingComponents(&nono,&tables,&scomp))>0){
 
-					if(flags.onerule || flags.dopartialsolution){
-						// Initilize block's ranges stored in first table.
-						for(int32_t col=nono.width-1;col>=0;col--){
-							initBlocksRanges(tables.firsttable.col+col,nono.colsdesc+col,nono.height);
-						}
-						for(int32_t row=nono.height-1;row>=0;row--){
-							initBlocksRanges(tables.firsttable.row+row,nono.rowsdesc+row,nono.width);
-						}
-						writeflags|=NONOGRAM_WRITE_SVG_FLAG_WRITE_BLOCKS_RANGES;
-					}
-
-					// Solve the nonogram until no line can be solved futher
-					// or apply one rule.
-					if(flags.onerule){
-
-						// Go through the list of rules to perform.
-						while(rulelist){
-
-							// Grap Operation structure from rulelist.
-							struct Operation ruleop=rulelist->op;
-
-							// Calculate stride and line.
-							uint32_t stride=ruleop.line*nono.width+(!ruleop.line);
-							int32_t length=ruleop.line*nono.height+(!ruleop.line)*nono.width;
-							static_assert((&nono.rowsdesc)+1==&nono.colsdesc,"Alignment doesn't allow calculate addressing!\n");
-
-							if(ruleop.id<FULL_RUN_RULE){
-
-								// Since this comes from user safety check that line even exists!
-								if(ruleop.linenumber<ruleop.line*nono.width+(!ruleop.line)*nono.height){
-
-									enum Pixel *line=getLine(&nono,ruleop.line,ruleop.linenumber,&tables.firsttable);
-									Description *desc=getDesc(&nono,ruleop.line,ruleop.linenumber);
-									BlocksRanges *ranges=getBlockRanges(&nono,ruleop.line,ruleop.linenumber,&tables.firsttable);
-
-									if(Rules[ruleop.id](line,length,stride,desc,ranges)<0){
-										(void)write(STDERR_FILENO,"ERROR: line rule retuned a error!\n",35);
-										goto GETOPT_PARSING_ERROR;
-									}
-								}
-								else (void)write(STDERR_FILENO,"WARNING: single line rule ignored as line didn't exists!\n",57);
-							}
-							else if(ruleop.id==FULL_RUN_RULE){
-								// Run rule to every line in a dimension
-								int32_t lineamount=(!ruleop.line)*nono.height+ruleop.line*nono.width;
-								for(int32_t linenumber=lineamount-1;linenumber>=0;linenumber--){
-
-									enum Pixel *line=getLine(&nono,ruleop.line,linenumber,&tables.firsttable);
-									Description *desc=getDesc(&nono,ruleop.line,linenumber);
-									BlocksRanges *ranges=getBlockRanges(&nono,ruleop.line,linenumber,&tables.firsttable);
-
-									if(Rules[ruleop.linenumber](line,length,stride,desc,ranges)<0){
-										(void)write(STDERR_FILENO,"ERROR: line rule retuned a error!\n",35);
-										goto GETOPT_PARSING_ERROR;
-									}
-								}
-							}
-							else if(ruleop.id==FORCE_COLOR){
-								// Forcefully colour a pixel.
-								struct ForcefullyColour *cmd=(struct ForcefullyColour*)rulelist;
-								if(cmd->check && getTablePixel (&nono,&tables.firsttable,cmd->row,cmd->column)!=UNKNOWN_PIXEL){
-									(void)write(STDERR_FILENO,"ERROR: Trying colour pixel which is already coloured!\n",54);
-									goto ERROR_AT_NONOGRAMGENSVG;
-								}
-								// Sanity check cmd->row and cmd->column
-								if(0<=cmd->row && cmd->row<nono.height && 0<=cmd->column && cmd->column<nono.width){
-									                           colourTablePixel (&nono,&tables.firsttable,cmd->row,cmd->column,cmd->colour);
-								}
-								else (void)write(STDERR_FILENO,"WARNING: single line rule ignored as colouring would be off!\n",61);
-							}
-
-							// Move to next rule and free memory.
-							{
-								struct SingleRule *notneeded=rulelist;
-								rulelist=rulelist->next;
-								free(notneeded);
-							}
-						}
-					}
-
-					if(flags.dopartialsolution){
 						#ifdef _PROFILE_
-							// Profile partial solver.
-							tickProfiling(0,1);
+							tockProfiling(0,2);
+							initProfiling(1,numberofswitchingcomps,"/tmp/data.1.txt");
 						#endif
-						// Simple loop every logical rule until no
-						// updates where made.
-						int update;
-						do{
-							update=0;
-							{
-								// Handle rows.
-								uint32_t stride=1;
-								int32_t length=nono.width;
-								for(int32_t row=nono.height-1;row>=0;row--){
-									enum Pixel *line=getLine(&nono,0,row,&tables.firsttable);
-									Description *desc=getDesc(&nono,0,row);
-									BlocksRanges *ranges=getBlockRanges(&nono,0,row,&tables.firsttable);
-									for(int8_t rule=(&Rules[12]-&Rules[0])-1;rule>=0;rule--){
-										int32_t temp=Rules[rule](line,length,stride,desc,ranges);
-										if(temp<0) goto ERROR_AT_SOLVER;
-										update+=temp;
-									}
-								}
-							}
-							// Handle column.
-							{
-								uint32_t stride=nono.width;
-								int32_t length=nono.height;
-								for(int32_t col=nono.width-1;col>=0;col--){
-									enum Pixel *line=getLine(&nono,1,col,&tables.firsttable);
-									Description *desc=getDesc(&nono,1,col);
-									BlocksRanges *ranges=getBlockRanges(&nono,1,col,&tables.firsttable);
-									for(int8_t rule=(&Rules[12]-&Rules[0])-1;rule>=0;rule--){
-										int32_t temp=Rules[rule](line,length,stride,desc,ranges);
-										if(temp<0) goto ERROR_AT_SOLVER;
-										update+=temp;
-									}
-								}
-							}
-
-						}while(update);
-
-					}
-					#ifdef _PROFILE_
-							// End profiling of partial solver.
-							tockProfiling(0,1);
-					#endif
-
-					// Did user ask for partial solution?
-					if(flags.dosvg && flags.writepartialsolution){
-						int result=nonogramWriteSvg(STDOUT_FILENO,&htmlpage,&nono,&tables.firsttable,writeflags);
-						if(!result) (void)write(STDERR_FILENO,"ERROR: Partial solution SVG couldn't be written!\n",49);
-					}
-
-					// Did user ask check for block's range swapping?
-					if(flags.doblockswapguard){
-						// Check every row block has swapped
-						for(int32_t row=0;row<nono.height;row++){
-							for(int32_t block=0;block<nono.rowsdesc[row].length;block++){
-								if(tables.firsttable.row[row].blocksrangelefts[block]>tables.firsttable.row[row].blocksrangerights[block]){
-									// SANITY GONE!
-									(void)write(STDERR_FILENO,"SANITY: Block's range swap in one the rows!\n",44);
-									goto ERROR_AT_NONOGRAMGENSVG;
-								}
-							}
-						}
-						// Check every column block has swapped
-						for(int32_t col=0;col<nono.width;col++){
-							for(int32_t block=0;block<nono.colsdesc[col].length;block++){
-								if(tables.firsttable.col[col].blocksrangelefts[block]>tables.firsttable.col[col].blocksrangerights[block]){
-									// SANITY GONE!
-									(void)write(STDERR_FILENO,"SANITY: Block's range swap in one the columns!\n",47);
-									goto ERROR_AT_NONOGRAMGENSVG;
-								}
-							}
-						}
-					}
-
-					// Solution counting estimate algorithm.
-					if(flags.dosolutioncountingestimate){
-						(void)write(STDOUT_FILENO,"Estimating number of solutions.\n",32);
-
-						// Get switching components.
-						uint32_t solutioncount=0;
-						uint32_t undetected=0;
-						SwitchingComponent *scomp;
-						int32_t numberofswitchingcomps;
-						#ifdef _PROFILE_
-							tickProfiling(0,2);
-						#endif
-						if((numberofswitchingcomps=detectSwitchingComponents(&nono,&tables,&scomp))>0){
-
+						// Detect every switching component.
+						for(int32_t comp=0;comp<numberofswitchingcomps;comp++){
 							#ifdef _PROFILE_
-								initProfiling(1,numberofswitchingcomps,profbuffpath);
+								newSample(1,scomp[comp].sizeofunknownpixelgraph);
+								tickProfiling(1,0);
 							#endif
-							// Detect every switching component.
-							for(int32_t comp=0;comp<numberofswitchingcomps;comp++){
-								#ifdef _PROFILE_
-									newSample(1,scomp[comp].sizeofunknownpixelgraph);
-									tickProfiling(1,0);
-								#endif
-								uint32_t temp=NonoDetectOneBlackColourableOnePixelSquareSwitchingComponent(&nono,&tables,scomp+comp);
-								#ifdef _PROFILE_
-									tockProfiling(1,0);
-								#endif
-								if(temp){
-									solutioncount+=temp;
-								}
-								else undetected++;
-							}
+							uint32_t temp=NonoDetectOneBlackColourableOnePixelSquareSwitchingComponent(&nono,&tables,scomp+comp);
 							#ifdef _PROFILE_
 								tockProfiling(1,0);
-								tockProfiling(0,2);
+							#endif
+							if(temp){
+								solutioncount+=temp;
+							}
+							else undetected++;
+						}
+						#ifdef _PROFILE_
+							if(!flags.reportscdetectable){
 								tockProfiling(0,0);
 								finalizePlot(0,3);
 								finalizePlot(1,1);
-							#endif
+							}
+						#endif
 
+						if(flags.reportscdetectable && undetected){
+							(void)write(STDERR_FILENO,"Error: undetected switching components!\n",40);
+							returnval=100;
+						}
+						else{
 							// Print out number of solution counted.
-							PRINT_SOLUTION_COUNT:
 							{
 								struct iovec iov[]={{"Estimated number of solutions: ",31},{0,0},{"\nNumber of unknown proposed switching components: ",51},{0,0},{"\n",1}};
 								iov[1].iov_len=i32toalen(solutioncount);
@@ -557,46 +584,46 @@ int main(int argc,char *argv[]){
 								i32toa(undetected,undetectedbuffer,iov[3].iov_len);
 								(void)writev(STDOUT_FILENO,iov,sizeof(iov)/sizeof(struct iovec));
 							}
-
-							freeSwitchingComponentArray(scomp,numberofswitchingcomps);
 						}
-						else if(numberofswitchingcomps==0){
-							// One solution.
-							(void)write(STDOUT_FILENO,"Only one solution.\n",19);
-						}
+
+						freeSwitchingComponentArray(scomp,numberofswitchingcomps);
 					}
-
-					if(flags.dosvg){
-						int result=nonogramWriteSvg(STDOUT_FILENO,&htmlpage,&nono,&tables.firsttable,writeflags);
-						if(!result) (void)write(STDERR_FILENO,"ERROR: SVG couldn't be written!\n",32);
-						nonogramFreeSvg(&htmlpage);
+					else if(numberofswitchingcomps==0){
+						// One solution.
+						(void)write(STDOUT_FILENO,"Only one solution.\n",19);
 					}
-
-					ERROR_AT_NONOGRAMGENSVG:
-					// Start unwinding the resource allocation process.
-					nonogramEmptyTables(&nono,&tables);
 				}
-				else (void)write(STDERR_FILENO,"ERROR: Table's pixels couldn't be allocated!\n",45);
-				nonogramEmpty(&nono);
-			}
-			else{
-				(void)write(STDERR_FILENO,"ERROR: Couldn't read!\n",22);
-				if(result.id>2){
 
-					// Write out line number error happened at.
-					uint32_t linelength=i32toalen(result.line);
-					uint8_t linebuff[linelength];
-					i32toa(result.line,linebuff,linelength);
-
-					struct iovec io[]={{"Error happened at: ",19},{linebuff,linelength},{"\n",1}};
-					(void)writev(STDERR_FILENO,io,sizeof(io)/sizeof(struct iovec));
+				if(flags.dosvg){
+					int result=nonogramWriteSvg(STDOUT_FILENO,&htmlpage,&nono,&tables.firsttable,writeflags);
+					if(!result) (void)write(STDERR_FILENO,"ERROR: SVG couldn't be written!\n",32);
+					nonogramFreeSvg(&htmlpage);
 				}
+
+				ERROR_AT_NONOGRAMGENSVG:
+				// Start unwinding the resource allocation process.
+				nonogramEmptyTables(&nono,&tables);
 			}
-			close(file);
+			else (void)write(STDERR_FILENO,"ERROR: Table's pixels couldn't be allocated!\n",45);
+			nonogramEmpty(&nono);
 		}
-		else (void)write(STDERR_FILENO,"ERROR: File couldn't be opened!\n",32);
+		else{
+			returnval=10;
+			(void)write(STDERR_FILENO,"ERROR: Couldn't read!\n",22);
+			if(result.id>2){
+
+				// Write out line number error happened at.
+				uint32_t linelength=i32toalen(result.line);
+				uint8_t linebuff[linelength];
+				i32toa(result.line,linebuff,linelength);
+
+				struct iovec io[]={{"Error happened at: ",19},{linebuff,linelength},{"\n",1}};
+				(void)writev(STDERR_FILENO,io,sizeof(io)/sizeof(struct iovec));
+			}
+		}
+		if(file!=STDOUT_FILENO) close(file);
 	}
-	else (void)write(STDERR_FILENO,"ERROR: No file to open!\n",24);
+	else (void)write(STDERR_FILENO,"ERROR: File couldn't be opened!\n",32);
 	
 	// If error happens then free happens as well.
 	while(rulelist){
@@ -606,7 +633,7 @@ int main(int argc,char *argv[]){
 	}
 
 	// Exit
-	return 0;
+	return returnval;
 
 	// Parsing error during options handling.
 	GETOPT_PARSING_ERROR:

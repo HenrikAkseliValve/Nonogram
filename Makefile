@@ -21,7 +21,16 @@ ifeq ($(PROFILE),1)
 endif
 
 .PHONY: all
-all: $(NONO_MAIN_EXE) $(NONO_CONF_GEN)
+all: $(NONO_MAIN_EXE) $(NONO_CONF_GEN_EXE)
+
+.PHONY: install
+install:
+	@echo "Not implemented."
+
+.PHONY: clean
+clean:
+	-rm $(NONO_MAIN_EXE)
+	-rm $(NONO_CONF_GEN_EXE)
 
 # Nonogram solver program
 $(NONO_MAIN_EXE): $(SOURCE_FILES)
