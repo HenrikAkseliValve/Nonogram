@@ -51,11 +51,7 @@ To apply intialization for solving or solver use `-I` option. For example, will 
 ./NonoMain.exe -s -I /NonogramConfs/Logical_Solver_Test2.cfg > /tmp/nono.html
 $BROWSER /tmp/nono.html
 ```
-<img>
-<svg width="100" height="100">
-	<rect x="0" y="0" width="400" height="400" style="#ff0000"></rect>
-</svg>
-</img>
+![](Doc/resources/readme-image2.svg)
 
 To manually apply a rule first apply initialization with `-I` option then apply rule via `-r`. For example, to add some pixels at bottom : 
 ```bash
