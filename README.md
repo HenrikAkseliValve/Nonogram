@@ -69,9 +69,50 @@ $BROWSER /tmp/nono.html
 ```
 ![](Doc/resources/readme-image4.svg)
 
-Other example which shows a partial solution rather than full one is "Logical_Solver":
+Other example which shows a partial solution rather than full one is "ElementarySwitch2.cfg":
 ```bash
 ./NonoMain.exe -s -I -p NonogramConfs/ElementarySwitch2.cfg > /tmp/nono.html
 $BROWSER /tmp/nono.html
 ```
 ![](Doc/resources/readme-image5.svg)
+
+To count number of solution use -e (meaning _estimate_) option. This option estimates number
+of solution from switching components it recognized and information number of switching components it did not.
+For example "ElementarySwitch2.cfg":
+```bash
+./NonoMain.exe -e -I -p NonogramConfs/ElementarySwitch2.cfg
+```
+Output is:
+```
+Estimating number of solutions.
+Estimated number of solutions: 4
+Number of unknown proposed switching components: 0
+```
+
+Larger example with switching components which are not detected
+"one_black_colourable_one_pixel_SSC_and_non_SCC_test.cfg":
+```bash
+./NonoMain.exe -e -I -p  NonogramConfs/one_black_colourable_one_pixel_SSC_and_non_SCC_test.cfg
+```
+Output is:
+```
+Estimating number of solutions.
+Estimated number of solutions: 2880
+Number of unknown proposed switching components: 4
+```
+
+To generate a column of one-black colourable one-pixel square switching components use `-g VLConcatenate`
+on _NonoConfGen.exe_. Options `-n` controls the avarage size of the switching component generated and
+`-m` control number switching components in the column. Output from _NonoConfGen.exe_ is written to standard
+output. For example to generate column of four on avarage size 6 one-black colourable one-pixel square
+switching components and counting number of switching components:
+```
+./NonoConfGen.exe -n6 -m4 -g VLConcatenate > /tmp/nono.conf
+./NonoMain.exe -e -I -p /tmp/nono.conf
+```
+Output from this may include switching component that aren't recognized as generator is not perfect.
+Number of solution counted also may differ as generator does random select the size of the switching
+components in the column.
+
+NOTE: _NonoMain.exe_ does not read UNIX pipes at the moment.
+

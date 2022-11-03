@@ -554,7 +554,8 @@ int main(int argc,char *argv[]){
 								tockProfiling(1,0);
 							#endif
 							if(temp){
-								solutioncount+=temp;
+								if(solutioncount!=0) solutioncount*=temp;
+								else solutioncount=temp;
 							}
 							else undetected++;
 						}
