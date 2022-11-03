@@ -53,9 +53,25 @@ $BROWSER /tmp/nono.html
 ```
 ![](Doc/resources/readme-image2.svg)
 
-To manually apply a rule first apply initialization with `-I` option then apply rule via `-r`. For example, to add some pixels at bottom : 
+To manually apply a rule first apply initialization with `-I` option then apply rule via `-r`. For example,
+to add white pixel to row 3 and column 5, apply rule 3.1 first to refine block ranges and then colour
+white pixels by rule 1.2:
 ```bash
 ./NonoMain.exe -s -I -r3.1r3 -r3.1c4 -r1.2r3 -r1.2c4 NonogramConfs/Logical_Solver_Test2.cfg > /tmp/nono.html
 $BROWSER /tmp/nono.html
 ```
+![](Doc/resources/readme-image3.svg)
 
+To partially solve the image use `-p` option. For example a full solution of "Logical_Solver_Test2.cfg" can be gotten:
+```bash
+./NonoMain.exe -s -I -p NonogramConfs/Logical_Solver_Test2.cfg > /tmp/nono.html
+$BROWSER /tmp/nono.html
+```
+![](Doc/resources/readme-image4.svg)
+
+Other example which shows a partial solution rather than full one is "Logical_Solver":
+```bash
+./NonoMain.exe -s -I -p NonogramConfs/ElementarySwitch2.cfg > /tmp/nono.html
+$BROWSER /tmp/nono.html
+```
+![](Doc/resources/readme-image5.svg)
