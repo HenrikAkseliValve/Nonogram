@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="285" height="180">
+<defs>
+<g id="U" transform="translate(0 10)">
+<rect x="0" y="0" width="10" height="10" style="fill:#ececec;"></rect>
+<text x="0" y="0" width="10" height="10" fill="black" style="font-style:normal;font-weight:normal;font-size:7px;line-height:1.5;font-family:sans-serif;" text-anchor="middle" transform="translate(5 8)">?</text>
+</g>
+<rect y="10" id="W" width="10" height="10" style="fill:none;stroke:#000000;stroke-width:0.75;"></rect>
+<rect id="1" width="10" height="10" style="fill:#000000;" y="10"></rect>
+<marker id="HookEnd" style="overflow:visible" orient="auto-start-reverse">
+<path style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.5pt;stroke-opacity:1" d="m -2.5,2.5 c 1.5,0 2.5,-1 2.5,-2.5 0,-1.5 -1,-2.5 -2.5,-2.5"></path>
+</marker>
+</defs>
+<g transform="translate(5 5)">
+<rect x="0" y="0" width="275" height="170" style="fill:#dfdfeb;"></rect>
+<rect x="75" y="50" width="200" height="120" style="fill:#ffffff;"></rect>
+<g transform="translate(75 50)">
+<use x="180" y="100" href="#1"></use><use x="160" y="100" href="#1"></use><use x="140" y="100" href="#W"></use><use x="120" y="100" href="#1"></use><use x="100" y="100" href="#1"></use><use x="80" y="100" href="#1"></use><use x="60" y="100" href="#W"></use><use x="40" y="100" href="#1"></use><use x="20" y="100" href="#W"></use><use x="0" y="100" href="#1"></use><use x="180" y="80" href="#W"></use><use x="160" y="80" href="#1"></use><use x="140" y="80" href="#W"></use><use x="120" y="80" href="#W"></use><use x="100" y="80" href="#1"></use><use x="80" y="80" href="#1"></use><use x="60" y="80" href="#W"></use><use x="40" y="80" href="#W"></use><use x="20" y="80" href="#1"></use><use x="0" y="80" href="#1"></use><use x="180" y="60" href="#1"></use><use x="160" y="60" href="#W"></use><use x="140" y="60" href="#U"></use><use x="120" y="60" href="#U"></use><use x="100" y="60" href="#W"></use><use x="80" y="60" href="#W"></use><use x="60" y="60" href="#U"></use><use x="40" y="60" href="#U"></use><use x="20" y="60" href="#W"></use><use x="0" y="60" href="#W"></use><use x="180" y="40" href="#W"></use><use x="160" y="40" href="#W"></use><use x="140" y="40" href="#U"></use><use x="120" y="40" href="#U"></use><use x="100" y="40" href="#W"></use><use x="80" y="40" href="#W"></use><use x="60" y="40" href="#U"></use><use x="40" y="40" href="#U"></use><use x="20" y="40" href="#W"></use><use x="0" y="40" href="#1"></use><use x="180" y="20" href="#1"></use><use x="160" y="20" href="#1"></use><use x="140" y="20" href="#W"></use><use x="120" y="20" href="#W"></use><use x="100" y="20" href="#1"></use><use x="80" y="20" href="#1"></use><use x="60" y="20" href="#W"></use><use x="40" y="20" href="#W"></use><use x="20" y="20" href="#1"></use><use x="0" y="20" href="#W"></use><use x="180" y="0" href="#1"></use><use x="160" y="0" href="#W"></use><use x="140" y="0" href="#1"></use><use x="120" y="0" href="#W"></use><use x="100" y="0" href="#1"></use><use x="80" y="0" href="#1"></use><use x="60" y="0" href="#1"></use><use x="40" y="0" href="#W"></use><use x="20" y="0" href="#1"></use><use x="0" y="0" href="#1"></use>
+</g>
+<g style="stroke:#666666;stroke-width:1;">
+<rect x="0" y="0" width="275" height="170" style="fill:none"></rect>
+<g transform="translate(75 0)">
+<line x1="180" y1="0" x2="180" y2="170"></line>
+<line x1="160" y1="0" x2="160" y2="170"></line>
+<line x1="140" y1="0" x2="140" y2="170"></line>
+<line x1="120" y1="0" x2="120" y2="170"></line>
+<line x1="100" y1="0" x2="100" y2="170"></line>
+<line x1="80" y1="0" x2="80" y2="170"></line>
+<line x1="60" y1="0" x2="60" y2="170"></line>
+<line x1="40" y1="0" x2="40" y2="170"></line>
+<line x1="20" y1="0" x2="20" y2="170"></line>
+<line x1="0" y1="0" x2="0" y2="170"></line>
+</g>
+<g transform="translate(0 50)">
+<line x1="0" y1="100" x2="275" y2="100"></line>
+<line x1="0" y1="80" x2="275" y2="80"></line>
+<line x1="0" y1="60" x2="275" y2="60"></line>
+<line x1="0" y1="40" x2="275" y2="40"></line>
+<line x1="0" y1="20" x2="275" y2="20"></line>
+<line x1="0" y1="0" x2="275" y2="0"></line>
+</g>
+</g>
+<g style="font-style:normal;font-weight:normal;font-size:14px;line-height:1.5;font-family:sans-serif;" fill="black"><g transform="translate(80 0)">
+<g transform="translate(180 0)"><text x="0" y="13">
+2<tspan x="0" dy="17">1</tspan><tspan x="0" dy="17">1</tspan>
+</text></g>
+<g transform="translate(160 0)"><text x="0" y="13">
+1<tspan x="0" dy="17">2</tspan>
+</text></g>
+<g transform="translate(140 0)"><text x="0" y="13">
+1<tspan x="0" dy="17">1</tspan>
+</text></g>
+<g transform="translate(120 0)"><text x="0" y="13">
+1<tspan x="0" dy="17">1</tspan>
+</text></g>
+<g transform="translate(100 0)"><text x="0" y="13">
+2<tspan x="0" dy="17">2</tspan>
+</text></g>
+<g transform="translate(80 0)"><text x="0" y="13">
+2<tspan x="0" dy="17">2</tspan>
+</text></g>
+<g transform="translate(60 0)"><text x="0" y="13">
+1<tspan x="0" dy="17">1</tspan>
+</text></g>
+<g transform="translate(40 0)"><text x="0" y="13">
+1<tspan x="0" dy="17">1</tspan>
+</text></g>
+<g transform="translate(20 0)"><text x="0" y="13">
+2<tspan x="0" dy="17">1</tspan>
+</text></g>
+<g transform="translate(0 0)"><text x="0" y="13">
+1<tspan x="0" dy="17">1</tspan><tspan x="0" dy="17">2</tspan>
+</text></g>
+</g>
+<g transform="translate(0 65)">
+<text x="2" y="100">
+1<tspan dx="9">1</tspan><tspan dx="9">3</tspan><tspan dx="9">2</tspan></text><text x="2" y="80">
+2<tspan dx="9">2</tspan><tspan dx="9">1</tspan></text><text x="2" y="60">
+1<tspan dx="9">1</tspan><tspan dx="9">1</tspan></text><text x="2" y="40">
+1<tspan dx="9">1</tspan><tspan dx="9">1</tspan></text><text x="2" y="20">
+1<tspan dx="9">2</tspan><tspan dx="9">2</tspan></text><text x="2" y="0">
+2<tspan dx="9">3</tspan><tspan dx="9">1</tspan><tspan dx="9">1</tspan></text>
+</g>
+</g>
+<g transform="translate(75 50)" marker-start="url(#HookEnd)" marker-end="url(#HookEnd)" style="stroke:#000000;stroke-width:1;">
+<line x1="130" y1="65" x2="150" y2="65"></line>
+<line x1="50" y1="65" x2="70" y2="65"></line>
+<line x1="130" y1="45" x2="150" y2="45"></line>
+<line x1="50" y1="45" x2="70" y2="45"></line>
+<line x1="155" y1="45" x2="155" y2="65"></line>
+<line x1="135" y1="45" x2="135" y2="65"></line>
+<line x1="75" y1="45" x2="75" y2="65"></line>
+<line x1="55" y1="45" x2="55" y2="65"></line>
+</g>
+</g>
+</svg>
