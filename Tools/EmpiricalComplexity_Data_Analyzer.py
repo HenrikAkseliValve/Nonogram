@@ -48,7 +48,7 @@ if datacollection:
 				
 				for resample in range(0,SamplesPerConf):
 					print("Sample Info: "+str(confi)+","+str(resample));
-					proc=subprocess.run(["./NonoMain.exe","-I","-p","-e",nonogenpath]);
+					proc=subprocess.run(["./NonoMain.exe","-I","-p","-Vrange","-e",nonogenpath]);
 					if proc.returncode!=0:
 						if proc.returncode==100:
 							# More just in case.
@@ -80,7 +80,7 @@ if datacollection:
 					
 					for resample in range(0,SamplesPerConf):
 						print("Sample Info: "+str(confi)+","+str(compnum)+","+str(resample));
-						proc=subprocess.run(["./NonoMain.exe","-I","-p","-e",nonogenpath]);
+						proc=subprocess.run(["./NonoMain.exe","-I","-p","-Vrange","-e",nonogenpath]);
 						if proc.returncode!=0:
 							if proc.returncode==100:
 								# More just in case.

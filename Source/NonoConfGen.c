@@ -773,6 +773,10 @@ int main(int argc,char *argv[]){
 					else if(strcmp("none",optarg)==0){
 						confgen=NULL;
 					}
+					else{
+						(void)write(STDERR_FILENO,"ERROR: generator given does not exist!\n",40);
+						return 2;
+					}
 					break;
 				case 'h':{
 						const char usage[]="Usage: NonoConfGen.exe [options]\n"

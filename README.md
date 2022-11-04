@@ -116,3 +116,6 @@ components in the column.
 
 NOTE: _NonoMain.exe_ does not read UNIX pipes at the moment.
 
+## NONOGRAM CONFIGURATION FILE
+File format was invented by [I'm an inline-style link](https://github.com/Stabbath/nonogram-solver/tree/master/puzzles)
+
