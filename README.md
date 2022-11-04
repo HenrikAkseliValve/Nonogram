@@ -23,7 +23,7 @@ To build only _NonoConfGen.exe_ with debug information use:
 make NonoConfGen.exe
 ```
 
-Oprimized binary is created setting DEBUG=0. For example, compile both programs optimized:
+Optimized binary is created setting DEBUG=0. For example, compile both programs optimized:
 ```bash
 make all DEBUG=0
 ```
@@ -41,14 +41,17 @@ Both programs have help text which can be viewed with `-h` option:
 
 To visualize a nonogram use `-s` option with _Nonomain.exe_. Program outputs stdout HTML with SVG image of Nonogram which can be opened by a web browser: 
 ```bash
-./NonoMain.exe -s /NonogramConfs/Logical_Solver_Test2.cfg > /tmp/nono.html
+./NonoMain.exe -s NonogramConfs/Logical_Solver_Test2.cfg > /tmp/nono.html
 $BROWSER /tmp/nono.html
 ```
 ![](Doc/resources/readme-image1.svg)
 
+**NOTE**: If browser does not open the HTML files in `/tmp` then it is most like sandboxing issue. Easiest fix
+is to save "nono.html" in the same folder as the program.
+
 To apply intialization for solving or solver use `-I` option. For example, will show same nonogram as before with inital block ranges and some black pixels:
 ```bash
-./NonoMain.exe -s -I /NonogramConfs/Logical_Solver_Test2.cfg > /tmp/nono.html
+./NonoMain.exe -s -I NonogramConfs/Logical_Solver_Test2.cfg > /tmp/nono.html
 $BROWSER /tmp/nono.html
 ```
 ![](Doc/resources/readme-image2.svg)
@@ -114,8 +117,28 @@ Output from this may include switching component that aren't recognized as gener
 Number of solution counted also may differ as generator does random select the size of the switching
 components in the column.
 
-NOTE: _NonoMain.exe_ does not read UNIX pipes at the moment.
+**NOTE**: _NonoMain.exe_ does not read UNIX pipes at the moment. 
 
-## NONOGRAM CONFIGURATION FILE
-File format was invented by [I'm an inline-style link](https://github.com/Stabbath/nonogram-solver/tree/master/puzzles)
+## NONOGRAM CONFIGURATION FILE FORMAT
+File format was insprited by Stabbath's program [nonogram-solver](https://github.com/Stabbath/nonogram-solver/tree/master/puzzles).
+```
+# I am a heading comment!
+# My rows must start with '#' symbol but there can be any number of us.
+# I am only comment that can exist in the file!
+# AFTER ME must be only digits and newlines
+5       <--- width of the nonogram
+5       <--- height of the nonogram
+        <--- Row with only newline
+1 5     ⎫ 
+2 2 2   ⎬ Column descriptions 
+1 0     ⎪   Format for nonograms descriptions is 
+2 1 1   ⎪   <number of blocks><space><block 0 length><space>...<space><block k length><newline>
+2 1 2   ⎭   For example in C format: description of two blocks of sizes 1 and 7 is: "2 1 7\n"
+        <--- Row with only newline
+1 2     ⎫
+2 2 2   ⎪
+1 1     ⎬ Row descriptions
+2 2 2   ⎪
+2 2 1   ⎭   Last row in the file also ends to newline!
+```
 
