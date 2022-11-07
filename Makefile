@@ -1,3 +1,4 @@
+CC?=gcc
 CFLAGS:=-Wall -Wno-unused-result -std=gnu17
 NONO_MAIN_EXE=NonoMain.exe
 NONO_CONF_GEN_EXE=NonoConfGen.exe
@@ -34,14 +35,14 @@ clean:
 
 # Nonogram solver program
 $(NONO_MAIN_EXE): $(SOURCE_FILES)
-	gcc $(CFLAGS) -o$@ $^
+	$(CC) $(CFLAGS) -o$@ $^
 # Create the solver vith analyzer run.
 NonoSolver_Analyzer: $(SOURCE_FILES)
-	gcc -fanalyzer -o$(NONO_MAIN_EXE) $^
+	$(CC) -fanalyzer -o$(NONO_MAIN_EXE) $^
 
 # Build nonogram configuration file generator.
 $(NONO_CONF_GEN_EXE): $(SOURCE_FILES_NONO_CONG_GEN_EXE)
-	gcc $(CFLAGS) -o$@ $^
+	$(CC) $(CFLAGS) -o$@ $^
 
 # Build object directory
 $(O):
