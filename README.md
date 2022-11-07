@@ -154,7 +154,7 @@ Note that last line of the row descriptions needs the description formats newlin
 # I am a heading comment!
 # My rows must start with '#' symbol but there can be any number of us.
 # I am only comment that can exist in the file!
-# AFTER ME must be only digits and newlines
+# AFTER ME must be only digits and newlines!
 5       <--- width of the nonogram
 5       <--- height of the nonogram
         <--- Empty line
