@@ -36,6 +36,8 @@ switching component type on same line.
 in multiple lines.
 Rerunning the program appends to files. So reading "/tmp/data.1.txt" may become difficult if file is not
 occasionally removed.
+Profiling is meant to be used with "Tools/EmpiricalComplexity_Data_Analyzer.py" to get graphs on timing
+as size of nonograms grow.
 
 So optimized binary with profiling is:
 ```bash
