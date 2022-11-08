@@ -1,4 +1,3 @@
-
 # NONOGRAM TOOL
 
 Two programs:
@@ -148,7 +147,6 @@ lines is the width of the nonogram, second is the height.
 Format for the descriptions is &lt;number of blocks&gt;&lt;space&gt;&lt;block 0 length&gt;&lt;space&gt;...&lt;space&gt;&lt;block k length&gt;&lt;newline&gt;.
 For example in C format: description of two blocks of sizes 1 and 7 is: "2 1 7\n".
 * **Row descriptions** Height amount of lines defining rows descriptions. Uses same description format as columns.
-Note that last line of the row descriptions needs the description formats newline.  
 
 ```
 # I am a heading comment!
